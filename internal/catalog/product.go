@@ -1,12 +1,8 @@
 package catalog
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 )
-
-var ErrNegativePrice = errors.New("product price cannot be negative")
 
 type Product struct {
 	ID         uuid.UUID
