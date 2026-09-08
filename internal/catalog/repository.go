@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -90,7 +91,7 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Product, error)
 		&product.Available,
 	)
 	if err != nil {
-		if errors.Is(err, ErrProductNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return Product{}, fmt.Errorf("get product %s: %w", id, ErrProductNotFound)
 		}
 
