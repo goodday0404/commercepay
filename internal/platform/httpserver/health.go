@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,6 +20,11 @@ func NewHealthHandlers(db *pgxpool.Pool, logger *slog.Logger) *HealthHandlers {
 		db:     db,
 		logger: logger,
 	}
+}
+
+func (h *HealthHandlers) RegisterRoutes(r chi.Router) {
+	r.Get("/health", h.Health)
+	r.Get("/ready", h.Ready)
 }
 
 func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
