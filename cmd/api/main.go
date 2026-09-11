@@ -27,10 +27,9 @@ func run() error {
 	}
 	defer deps.Close()
 
-	handlers := buildHandlers(deps)
-	registerRoutes(deps.Router, handlers)
+	buildCatalog(deps.DB, deps.Router)
 
-	server := buildHTTPServer(cfg, deps)
+	server := buildHTTPServer(cfg.HTTPPort, deps.Router)
 
 	err = runServer(server, deps.Logger)
 

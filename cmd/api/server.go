@@ -11,20 +11,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/goodday0404/commercepay/internal/platform/config"
+	"github.com/go-chi/chi/v5"
 	"github.com/goodday0404/commercepay/internal/platform/httpserver"
 )
 
-func buildHTTPServer(cfg config.Config, deps *dependencies) *http.Server {
+func buildHTTPServer(httpPort string, router chi.Router) *http.Server {
 	return httpserver.NewServer(
 		httpserver.ServerOptions{
-			Address:           ":" + cfg.HTTPPort,
+			Address:           ":" + httpPort,
 			ReadHeaderTimeout: httpReadHeaderTimeout,
 			ReadTimeout:       httpReadTimeout,
 			WriteTimeout:      httpWriteTimeout,
 			IdleTimeout:       httpIdleTimeout,
 		},
-		deps.Router,
+		router,
 	)
 }
 

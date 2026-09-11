@@ -52,7 +52,7 @@ func buildDependencies(cfg config.Config) (*dependencies, error) {
 
 	logger.Info("PostgreSQL connection established")
 
-	router := httpserver.NewRouter(logger)
+	router := httpserver.NewRouter(db, logger)
 
 	return &dependencies{
 		Logger: logger,
