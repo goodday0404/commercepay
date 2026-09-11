@@ -1,56 +1,36 @@
 package catalog
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/goodday0404/commercepay/internal/platform/httpserver"
 	"github.com/google/uuid"
 )
 
+const currentCursorVersion = 2
+
 type Handler struct {
-	service *Service
+	service         *Service
+	DefaultPageSize int
+	MaxPageSize     int
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service *Service, defaultPageSize, maxPageSize int) *Handler {
 	return &Handler{
 		service: service,
-	}
-}
-
-type createProductRequest struct {
-	SKU        string `json:"sku"`
-	Name       string `json:"name"`
-	PriceMinor int64  `json:"price_minor"`
-	Currency   string `json:"currency"`
-	Available  *bool  `json:"available"`
-}
-
-type productResponse struct {
-	ID         string `json:"id"`
-	SKU        string `json:"sku"`
-	Name       string `json:"name"`
-	PriceMinor int64  `json:"price_minor"`
-	Currency   string `json:"currency"`
-	Available  bool   `json:"available"`
-}
-
-func newProductResponse(product Product) productResponse {
-	return productResponse{
-		ID:         product.ID.String(),
-		SKU:        product.SKU,
-		Name:       product.Name,
-		PriceMinor: product.PriceMinor,
-		Currency:   product.Currency,
-		Available:  product.Available,
 	}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/admin/products", h.CreateProduct)
 	r.Get("/products/{id}", h.GetProduct)
+	r.Get("/products", h.ListProducts)
 }
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
@@ -124,45 +104,133 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func (h *Handler) handleCreateProductError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, ErrNegativePrice):
+func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
+	limit, err := parseIntQueryParameter(r, "limit", 20)
+	if err != nil {
 		http.Error(
 			w,
-			"product price cannot be negative",
+			"invalid limit",
 			http.StatusBadRequest,
 		)
-
-	case errors.Is(err, ErrSKUAlreadyExists):
-		http.Error(
-			w,
-			"product SKU already exists",
-			http.StatusConflict,
-		)
-
-	default:
-		http.Error(
-			w,
-			"internal server error",
-			http.StatusInternalServerError,
-		)
+		return
 	}
+
+	var after *ProductCursor
+
+	cursorValue := r.URL.Query().Get("cursor")
+
+	if cursorValue != "" {
+		cursor, err := decodeProductCursor(cursorValue)
+		if err != nil {
+			http.Error(
+				w,
+				"invalid cursor",
+				http.StatusBadRequest,
+			)
+			return
+		}
+
+		after = &cursor
+	}
+
+	input := ListProductsInput{
+		Limit: limit,
+		After: after,
+	}
+
+	page, err := h.service.ListProduct(r.Context(), input)
+	if err != nil {
+		h.handleListProductsError(w, err)
+		return
+	}
+
+	response := listProductsResponse{
+		Items: newProductResponses(page.Products),
+	}
+
+	if page.NextCursor != nil {
+		encoded, err := encodeProductCursor(*page.NextCursor)
+		if err != nil {
+			http.Error(
+				w,
+				"internal server error",
+				http.StatusInternalServerError,
+			)
+			return
+		}
+
+		response.NextCursor = &encoded
+	}
+
+	httpserver.WriteJSON(
+		w,
+		http.StatusOK,
+		response,
+	)
 }
 
-func (h *Handler) handleGetProductError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, ErrProductNotFound):
-		http.Error(
-			w,
-			"product not found",
-			http.StatusNotFound,
-		)
-
-	default:
-		http.Error(
-			w,
-			"internal server error",
-			http.StatusInternalServerError,
-		)
+func encodeProductCursor(cursor ProductCursor) (string, error) {
+	payload := productCursorPayload{
+		Version:   currentCursorVersion,
+		CreatedAt: cursor.CreatedAt,
+		ID:        cursor.ID.String(),
 	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal payload: %w", err)
+	}
+
+	return base64.RawURLEncoding.EncodeToString(data), nil
 }
+
+func decodeProductCursor(value string) (ProductCursor, error) {
+	data, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return ProductCursor{}, fmt.Errorf("decoe product cursor: %w", err)
+	}
+
+	var payload productCursorPayload
+
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return ProductCursor{}, fmt.Errorf("unmarshal product cursor payload %w", err)
+	}
+
+	if payload.Version != currentCursorVersion {
+		return ProductCursor{}, errors.New("unsupported cursor version")
+	}
+
+	id, err := uuid.Parse(payload.ID)
+	if err != nil {
+		return ProductCursor{}, fmt.Errorf("parse product cursor id: %w", err)
+	}
+
+	if payload.CreatedAt.IsZero() {
+		return ProductCursor{}, errors.New("invalid cursor timestamp")
+	}
+
+	return ProductCursor{
+		CreatedAt: payload.CreatedAt,
+		ID:        id,
+	}, nil
+}
+
+func parseIntQueryParameter(r *http.Request, name string, defaultValue int) (int, error) {
+	value := r.URL.Query().Get(name)
+
+	if value == "" {
+		return defaultValue, nil
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("parse query parameter: %w", err)
+	}
+
+	return parsed, nil
+}
+
+// total_count
+// page_number
+// previous_cursor
+// page_count

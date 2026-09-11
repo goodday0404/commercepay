@@ -100,3 +100,100 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Product, error)
 
 	return product, nil
 }
+
+func (r *Repository) List(ctx context.Context, limit int, cursor *ProductCursor) (ProductPage, error) {
+	const firstPageQuery = `
+		SELECT
+			id,
+			sku,
+			name,
+			price_minor,
+			currency,
+			available,
+			created_at
+		FROM products
+		ORDER BY created_at DESC, id DESC
+		LIMIT $1
+	`
+
+	const nextPageQuery = `
+		SELECT
+			id,
+			sku,
+			name,
+			price_minor,
+			currency,
+			available,
+			created_at
+		FROM products
+		WHERE (created_at, id) < ($1, $2)
+		ORDER BY created_at DESC, id DESC
+		LIMIT $3
+	`
+	fetchLimit := limit + 1
+	var rows pgx.Rows
+	var err error
+
+	if cursor == nil {
+		rows, err = r.db.Query(ctx, firstPageQuery, fetchLimit)
+	} else {
+		rows, err = r.db.Query(ctx, nextPageQuery, cursor.CreatedAt, cursor.ID, fetchLimit)
+	}
+
+	defer rows.Close()
+
+	if err != nil {
+		return ProductPage{}, fmt.Errorf("list products: %w", err)
+	}
+
+	resultRows := make([]productListRow, 0, fetchLimit)
+
+	for rows.Next() {
+		var row productListRow
+
+		if err := rows.Scan(
+			&row.Product.ID,
+			&row.Product.SKU,
+			&row.Product.Name,
+			&row.Product.PriceMinor,
+			&row.Product.Currency,
+			&row.Product.Available,
+			&row.CreatedAt,
+		); err != nil {
+			return ProductPage{}, fmt.Errorf("scan product: %w", err)
+		}
+
+		resultRows = append(resultRows, row)
+	}
+
+	if err := rows.Err(); err != nil {
+		return ProductPage{}, fmt.Errorf("iterate products: %w", err)
+	}
+
+	hasMore := len(resultRows) > limit && limit > 0
+
+	if hasMore {
+		resultRows = resultRows[:limit]
+	}
+
+	products := make([]Product, 0, len(resultRows))
+
+	for _, resultRow := range resultRows {
+		products = append(products, resultRow.Product)
+	}
+
+	var nextProduct *ProductCursor
+
+	if hasMore {
+		lastProduct := resultRows[len(resultRows)-1]
+		nextProduct = &ProductCursor{
+			CreatedAt: lastProduct.CreatedAt,
+			ID:        lastProduct.Product.ID,
+		}
+	}
+
+	return ProductPage{
+		Products:   products,
+		NextCursor: nextProduct,
+	}, nil
+}

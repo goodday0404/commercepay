@@ -7,14 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type CreateProductInput struct {
-	SKU        string
-	Name       string
-	PriceMinor int64
-	Currency   string
-	Available  bool
-}
-
 type Service struct {
 	repo *Repository
 }
@@ -51,4 +43,17 @@ func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 		return Product{}, fmt.Errorf("get product: %w", err)
 	}
 	return product, nil
+}
+
+func (s *Service) ListProduct(ctx context.Context, input ListProductsInput) (ProductPage, error) {
+	if input.Limit < 0 || input.Limit > 100 {
+		return ProductPage{}, ErrInvalidLimit
+	}
+
+	page, err := s.repo.List(ctx, input.Limit, input.After)
+	if err != nil {
+		return ProductPage{}, fmt.Errorf("list product: %w", err)
+	}
+
+	return page, nil
 }

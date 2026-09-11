@@ -11,6 +11,12 @@ type Config struct {
 	HTTPPort  string
 	LogConfig LogConfig
 	DBConfig  DBConfig
+	Catalog   CatalogConfig
+}
+
+type CatalogConfig struct {
+	DefaultPageSize int
+	MaxPageSize     int
 }
 
 func Load() (Config, error) {

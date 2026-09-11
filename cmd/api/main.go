@@ -27,7 +27,7 @@ func run() error {
 	}
 	defer deps.Close()
 
-	buildCatalog(deps.DB, deps.Router)
+	buildCatalog(cfg.Catalog, deps.DB, deps.Router)
 
 	server := buildHTTPServer(cfg.HTTPPort, deps.Router)
 
