@@ -11,7 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const SQLSTATE_UNIQUE_CONSTRANT = "23505"
+const (
+	SQLSTATE_UNIQUE_CONSTRANT = "23505"
+	SQLSTATE_CHECK_VIOLATION  = "23514"
+
+	PRODUCTS_PRICE_MINOR_CHECK  = "products_price_minor_check"
+	PRODUCT_SKU_UNIQUE          = "products_sku_unique"
+	PRODUCTS_SKU_NOT_BLANK      = "products_sku_not_blank"
+	PRODUCTS_NAME_NOT_BLANK     = "products_name_not_blank"
+	PRODUCTS_CURRENCY_NOT_BLANK = "products_currency_not_blank"
+)
 
 type Repository struct {
 	db *pgxpool.Pool
@@ -53,15 +62,24 @@ func (r *Repository) Insert(ctx context.Context, product Product) error {
 
 	var pgErr *pgconn.PgError
 
-	if errors.As(err, &pgErr) &&
-		pgErr.Code == SQLSTATE_UNIQUE_CONSTRANT &&
-		pgErr.ConstraintName == "products_sku_unique" {
+	if !errors.As(err, &pgErr) {
+		return fmt.Errorf("insert product: %w", err)
+	}
 
-		return fmt.Errorf(
-			"insert product with SKU %q: %w",
-			product.SKU,
-			ErrSKUAlreadyExists,
-		)
+	if pgErr.Code == SQLSTATE_UNIQUE_CONSTRANT &&
+		pgErr.ConstraintName == PRODUCT_SKU_UNIQUE {
+		return fmt.Errorf("insert product with SKU %q: %w", product.SKU, ErrSKUAlreadyExists)
+	}
+
+	if pgErr.Code == SQLSTATE_CHECK_VIOLATION {
+		switch pgErr.ConstraintName {
+		case PRODUCTS_SKU_NOT_BLANK:
+			return fmt.Errorf("insert product with SKU %q: %w", product.SKU, ErrEmptySKU)
+		case PRODUCTS_NAME_NOT_BLANK:
+			return fmt.Errorf("insert product with name %q: %w", product.Name, ErrEmptyName)
+		case PRODUCTS_CURRENCY_NOT_BLANK:
+			return fmt.Errorf("insert product with currency %q: %w", product.Currency, ErrEmptyCurrency)
+		}
 	}
 
 	return fmt.Errorf("insert product: %w", err)

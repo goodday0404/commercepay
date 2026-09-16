@@ -10,6 +10,10 @@ var (
 	ErrProductNotFound  = errors.New("product not found")
 	ErrSKUAlreadyExists = errors.New("product SKU already exists")
 	ErrInvalidLimit     = errors.New("invalid product list limit")
+
+	ErrEmptySKU      = errors.New("product SKU cannot be empty")
+	ErrEmptyName     = errors.New("product name cannot be empty")
+	ErrEmptyCurrency = errors.New("product currency cannot be empty")
 )
 
 func (h *Handler) handleCreateProductError(w http.ResponseWriter, err error) {
@@ -18,6 +22,27 @@ func (h *Handler) handleCreateProductError(w http.ResponseWriter, err error) {
 		http.Error(
 			w,
 			"product price cannot be negative",
+			http.StatusBadRequest,
+		)
+
+	case errors.Is(err, ErrEmptySKU):
+		http.Error(
+			w,
+			"product SKU cannot be empty string",
+			http.StatusBadRequest,
+		)
+
+	case errors.Is(err, ErrEmptyName):
+		http.Error(
+			w,
+			"product name cannot be empty string",
+			http.StatusBadRequest,
+		)
+
+	case errors.Is(err, ErrEmptyCurrency):
+		http.Error(
+			w,
+			"product currency cannot be empty string",
 			http.StatusBadRequest,
 		)
 

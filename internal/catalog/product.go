@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,8 +17,20 @@ type Product struct {
 }
 
 func NewProduct(SKU, name string, priceMinor int64, currency string, available bool) (Product, error) {
+	if strings.TrimSpace(SKU) == "" {
+		return Product{}, ErrEmptySKU
+	}
+
+	if strings.TrimSpace(name) == "" {
+		return Product{}, ErrEmptyName
+	}
+
 	if priceMinor < 0 {
 		return Product{}, ErrNegativePrice
+	}
+
+	if strings.TrimSpace(currency) == "" {
+		return Product{}, ErrEmptyCurrency
 	}
 
 	return Product{
