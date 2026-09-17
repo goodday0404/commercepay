@@ -7,11 +7,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type Service struct {
-	repo *Repository
+type productRepository interface {
+	Insert(context.Context, Product) error
+	GetByID(context.Context, uuid.UUID) (Product, error)
+	List(context.Context, int, *ProductCursor) (ProductPage, error)
 }
 
-func NewService(repo *Repository) *Service {
+type Service struct {
+	repo productRepository
+}
+
+func NewService(repo productRepository) *Service {
 	return &Service{
 		repo: repo,
 	}
@@ -45,8 +51,8 @@ func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 	return product, nil
 }
 
-func (s *Service) ListProduct(ctx context.Context, input ListProductsInput) (ProductPage, error) {
-	if input.Limit < 0 || input.Limit > 100 {
+func (s *Service) ListProducts(ctx context.Context, input ListProductsInput) (ProductPage, error) {
+	if input.Limit <= 0 || input.Limit > 100 {
 		return ProductPage{}, ErrInvalidLimit
 	}
 
