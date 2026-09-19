@@ -2,9 +2,7 @@ package catalog
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -138,52 +136,6 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpserver.WriteJSON(w, http.StatusOK, response)
-}
-
-func encodeProductCursor(cursor ProductCursor) (string, error) {
-	payload := productCursorPayload{
-		Version:   currentCursorVersion,
-		CreatedAt: cursor.CreatedAt,
-		ID:        cursor.ID.String(),
-	}
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("marshal payload: %w", err)
-	}
-
-	return base64.RawURLEncoding.EncodeToString(data), nil
-}
-
-func decodeProductCursor(value string) (ProductCursor, error) {
-	data, err := base64.RawURLEncoding.DecodeString(value)
-	if err != nil {
-		return ProductCursor{}, fmt.Errorf("decoe product cursor: %w", err)
-	}
-
-	var payload productCursorPayload
-
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return ProductCursor{}, fmt.Errorf("unmarshal product cursor payload %w", err)
-	}
-
-	if payload.Version != currentCursorVersion {
-		return ProductCursor{}, errors.New("unsupported cursor version")
-	}
-
-	id, err := uuid.Parse(payload.ID)
-	if err != nil {
-		return ProductCursor{}, fmt.Errorf("parse product cursor id: %w", err)
-	}
-
-	if payload.CreatedAt.IsZero() {
-		return ProductCursor{}, errors.New("invalid cursor timestamp")
-	}
-
-	return ProductCursor{
-		CreatedAt: payload.CreatedAt,
-		ID:        id,
-	}, nil
 }
 
 func parseIntQueryParameter(r *http.Request, name string, defaultValue int) (int, error) {

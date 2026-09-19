@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -21,6 +22,11 @@ const (
 	PRODUCTS_NAME_NOT_BLANK     = "products_name_not_blank"
 	PRODUCTS_CURRENCY_NOT_BLANK = "products_currency_not_blank"
 )
+
+type productListRow struct {
+	Product   Product
+	CreatedAt time.Time
+}
 
 type Repository struct {
 	db *pgxpool.Pool
