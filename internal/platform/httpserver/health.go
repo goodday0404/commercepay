@@ -2,11 +2,11 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -22,8 +22,13 @@ func NewHealthHandlers(db *pgxpool.Pool, logger *slog.Logger) *HealthHandlers {
 	}
 }
 
+func (h *HealthHandlers) RegisterRoutes(r chi.Router) {
+	r.Get("/health", h.Health)
+	r.Get("/ready", h.Ready)
+}
+
 func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *HealthHandlers) Ready(w http.ResponseWriter, r *http.Request) {
@@ -36,15 +41,9 @@ func (h *HealthHandlers) Ready(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 		)
 
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+		WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
-}
-
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(body)
+	WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
