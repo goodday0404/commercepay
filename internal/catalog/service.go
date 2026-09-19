@@ -14,12 +14,14 @@ type productRepository interface {
 }
 
 type Service struct {
-	repo productRepository
+	repo        productRepository
+	maxPageSize int
 }
 
-func NewService(repo productRepository) *Service {
+func NewService(repo productRepository, maxPageSize int) *Service {
 	return &Service{
-		repo: repo,
+		repo:        repo,
+		maxPageSize: maxPageSize,
 	}
 }
 
@@ -52,7 +54,7 @@ func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 }
 
 func (s *Service) ListProducts(ctx context.Context, input ListProductsInput) (ProductPage, error) {
-	if input.Limit <= 0 || input.Limit > 100 {
+	if input.Limit <= 0 || input.Limit > s.maxPageSize {
 		return ProductPage{}, ErrInvalidLimit
 	}
 

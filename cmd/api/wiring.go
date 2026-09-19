@@ -9,7 +9,7 @@ import (
 
 func buildCatalog(cfg config.CatalogConfig, db *pgxpool.Pool, router chi.Router) {
 	repo := catalog.NewRepository(db)
-	service := catalog.NewService(repo)
-	handler := catalog.NewHandler(service, cfg.DefaultPageSize, cfg.MaxPageSize)
+	service := catalog.NewService(repo, cfg.MaxPageSize)
+	handler := catalog.NewHandler(service, cfg.DefaultPageSize)
 	handler.RegisterRoutes(router)
 }

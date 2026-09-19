@@ -23,12 +23,17 @@ func Load() (Config, error) {
 	env := getEnv("APP_ENV", "local")
 	logConfig, err := newLogConfig(env)
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
 	}
 
 	dbConfig, err := newDBConfig(env)
 	if err != nil {
-		return Config{}, nil
+		return Config{}, err
+	}
+
+	catalogConfig, err := newCatalogConfig()
+	if err != nil {
+		return Config{}, err
 	}
 
 	return Config{
@@ -36,6 +41,7 @@ func Load() (Config, error) {
 		HTTPPort:  getEnv("HTTP_PORT", "8080"),
 		LogConfig: logConfig,
 		DBConfig:  dbConfig,
+		Catalog:   catalogConfig,
 	}, nil
 }
 
@@ -86,4 +92,45 @@ func requireEnv(key string) (string, error) {
 	}
 
 	return value, nil
+}
+
+const (
+	catalogPaginationDefaultValue = 20
+	catalogPaginationMaxValue     = 100
+)
+
+func newCatalogConfig() (CatalogConfig, error) {
+	var cfg CatalogConfig
+
+	size, err := getEnvInt("CATALOG_DEFAULT_PAGE_SIZE", catalogPaginationDefaultValue)
+	if err != nil {
+		return CatalogConfig{}, fmt.Errorf("convert catalog pagination default value: %w", err)
+	}
+
+	cfg.DefaultPageSize = size
+
+	size, err = getEnvInt("CATALOG_MAX_PAGE_SIZE", catalogPaginationMaxValue)
+	if err != nil {
+		return CatalogConfig{}, fmt.Errorf("convert catalog pagination max value: %w", err)
+	}
+
+	cfg.MaxPageSize = size
+
+	if cfg.DefaultPageSize <= 0 {
+		return CatalogConfig{}, fmt.Errorf("pagination default page size must be greater than zero")
+	}
+
+	if cfg.MaxPageSize <= 0 {
+		return CatalogConfig{}, fmt.Errorf("pagination max page size must be greater than zero")
+	}
+
+	if cfg.DefaultPageSize > cfg.MaxPageSize {
+		return CatalogConfig{}, fmt.Errorf(
+			"pagination default page size %d exceeds max page size %d",
+			cfg.DefaultPageSize,
+			cfg.MaxPageSize,
+		)
+	}
+
+	return cfg, nil
 }

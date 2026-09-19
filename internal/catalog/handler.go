@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,15 +16,21 @@ import (
 
 const currentCursorVersion = 2
 
-type Handler struct {
-	service         *Service
-	DefaultPageSize int
-	MaxPageSize     int
+type catalogService interface {
+	CreateProduct(context.Context, CreateProductInput) (Product, error)
+	GetProduct(context.Context, uuid.UUID) (Product, error)
+	ListProducts(context.Context, ListProductsInput) (ProductPage, error)
 }
 
-func NewHandler(service *Service, defaultPageSize, maxPageSize int) *Handler {
+type Handler struct {
+	service         catalogService
+	defaultPageSize int
+}
+
+func NewHandler(service catalogService, defaultPageSize int) *Handler {
 	return &Handler{
-		service: service,
+		service:         service,
+		defaultPageSize: defaultPageSize,
 	}
 }
 
@@ -40,20 +47,12 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&req); err != nil {
-		http.Error(
-			w,
-			"invalid request body",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if req.Available == nil {
-		http.Error(
-			w,
-			"available is required",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "available is required", http.StatusBadRequest)
 		return
 	}
 
@@ -72,22 +71,14 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpserver.WriteJSON(
-		w,
-		http.StatusCreated,
-		newProductResponse(product),
-	)
+	httpserver.WriteJSON(w, http.StatusCreated, newProductResponse(product))
 }
 
 func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	idText := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idText)
 	if err != nil {
-		http.Error(
-			w,
-			"invalid product id",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "invalid product id", http.StatusBadRequest)
 		return
 	}
 
@@ -97,21 +88,13 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpserver.WriteJSON(
-		w,
-		http.StatusOK,
-		newProductResponse(product),
-	)
+	httpserver.WriteJSON(w, http.StatusOK, newProductResponse(product))
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	limit, err := parseIntQueryParameter(r, "limit", 20)
+	limit, err := parseIntQueryParameter(r, "limit", h.defaultPageSize)
 	if err != nil {
-		http.Error(
-			w,
-			"invalid limit",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "invalid limit", http.StatusBadRequest)
 		return
 	}
 
@@ -122,11 +105,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if cursorValue != "" {
 		cursor, err := decodeProductCursor(cursorValue)
 		if err != nil {
-			http.Error(
-				w,
-				"invalid cursor",
-				http.StatusBadRequest,
-			)
+			http.Error(w, "invalid cursor", http.StatusBadRequest)
 			return
 		}
 
@@ -138,7 +117,7 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		After: after,
 	}
 
-	page, err := h.service.ListProduct(r.Context(), input)
+	page, err := h.service.ListProducts(r.Context(), input)
 	if err != nil {
 		h.handleListProductsError(w, err)
 		return
@@ -151,22 +130,14 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if page.NextCursor != nil {
 		encoded, err := encodeProductCursor(*page.NextCursor)
 		if err != nil {
-			http.Error(
-				w,
-				"internal server error",
-				http.StatusInternalServerError,
-			)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		response.NextCursor = &encoded
 	}
 
-	httpserver.WriteJSON(
-		w,
-		http.StatusOK,
-		response,
-	)
+	httpserver.WriteJSON(w, http.StatusOK, response)
 }
 
 func encodeProductCursor(cursor ProductCursor) (string, error) {

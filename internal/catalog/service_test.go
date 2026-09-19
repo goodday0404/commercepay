@@ -49,7 +49,7 @@ func TestServiceCreateProductRejectsInvalidProductBeforePersistence(t *testing.T
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	_, err := service.CreateProduct(
 		context.Background(),
@@ -81,7 +81,7 @@ func TestServiceCreateProductPersistsAndReturnsProduct(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	got, err := service.CreateProduct(
 		context.Background(),
@@ -133,7 +133,7 @@ func TestServiceCreateProductPreservesRepositoryError(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	_, err := service.CreateProduct(
 		context.Background(),
@@ -172,7 +172,7 @@ func TestServiceGetProductReturnsRepositoryProduct(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	got, err := service.GetProduct(context.Background(), expectedID)
 	if err != nil {
@@ -195,7 +195,7 @@ func TestServiceGetProductPreservesProductNotFound(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	_, err := service.GetProduct(context.Background(), uuid.New())
 
@@ -234,7 +234,7 @@ func TestServiceListProductsRejectsInvalidLimitBeforeRepository(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -294,11 +294,11 @@ func TestServiceListProductsPassesPaginationToRepository(t *testing.T) {
 	}
 
 	const (
-		expectLimit        = 20
+		expectLimit        = 2
 		expectedNumProduct = 1
 	)
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
 	got, err := service.ListProducts(
 		context.Background(),
@@ -340,8 +340,6 @@ func TestServiceListProductsPassesPaginationToRepository(t *testing.T) {
 	}
 }
 
-var errRepositoryUnavailable = errors.New("repository unavailable")
-
 func TestServiceListProductsPreservesRepositoryError(t *testing.T) {
 	repositoryErr := errors.New("repository unavailable")
 
@@ -351,9 +349,9 @@ func TestServiceListProductsPreservesRepositoryError(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo)
+	service := NewService(repo, 2)
 
-	_, err := service.ListProducts(context.Background(), ListProductsInput{Limit: 20})
+	_, err := service.ListProducts(context.Background(), ListProductsInput{Limit: 2})
 
 	if !errors.Is(err, repositoryErr) {
 		t.Fatalf("expected repository error to be preserved, got %v", err)
