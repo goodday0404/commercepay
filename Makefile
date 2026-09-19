@@ -2,6 +2,7 @@ DB_USER := $(POSTGRES_USER)
 DB_PASSWORD := $(POSTGRES_PASSWORD)
 DB := $(POSTGRES_DB)
 DB_TEST := $(POSTGRES_DB_TEST)
+TEST_API := $(TEST_DATABASE_URL)
 
 MIGRATIONS_DIR := ./migrations
 
@@ -21,7 +22,8 @@ GOOSE_TEST := \
 	test-db-reset \
 	test-db-validate \
 	check-test-db-url \
-	exec-test-db
+	exec-test-db \
+	test-api-run
 
 exec-test-db:
 	docker compose exec postgres \
@@ -54,3 +56,7 @@ test-db-reset: check-test-db-url
 
 test-db-validate:
 	go tool goose -dir "$(MIGRATIONS_DIR)" validate
+
+test-api-run: 
+	DATABASE_URL="$(TEST_API)" \
+	go run ./cmd/api
