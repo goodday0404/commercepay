@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goodday0404/commercepay/internal/testutil"
 	"github.com/google/uuid"
 )
 
 func TestRepositoryList_FirstPageReturnsLimitAndNextCursor(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 	repo := NewRepository(db)
 
 	baseTime := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
@@ -23,7 +24,7 @@ func TestRepositoryList_FirstPageReturnsLimitAndNextCursor(t *testing.T) {
 	insertProductFixture(t, db, middleID, "PRODUCT-2", baseTime.Add(2*time.Minute))
 	insertProductFixture(t, db, newestID, "PRODUCT-3", baseTime.Add(3*time.Minute))
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	page, err := repo.List(ctx, 2, nil)
 	if err != nil {
@@ -62,8 +63,8 @@ func TestRepositoryList_FirstPageReturnsLimitAndNextCursor(t *testing.T) {
 }
 
 func TestRepositoryList_CursorContinuesWithoutDuplicatesOrMissingProducts(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 	repo := NewRepository(db)
 
 	baseTime := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
@@ -88,7 +89,7 @@ func TestRepositoryList_CursorContinuesWithoutDuplicatesOrMissingProducts(t *tes
 	)
 
 	for {
-		ctx := testContext(t)
+		ctx := testutil.TestContext(t)
 		page, err := repo.List(ctx, 2, cursor)
 		if err != nil {
 			t.Fatalf("list products: %v", err)
@@ -127,8 +128,8 @@ func TestRepositoryList_CursorContinuesWithoutDuplicatesOrMissingProducts(t *tes
 }
 
 func TestRepositoryList_UsesIDAsTieBreakerForSameTimestamp(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 	repo := NewRepository(db)
 
 	createdAt := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
@@ -141,7 +142,7 @@ func TestRepositoryList_UsesIDAsTieBreakerForSameTimestamp(t *testing.T) {
 	insertProductFixture(t, db, id2, "PRODUCT-2", createdAt)
 	insertProductFixture(t, db, id3, "PRODUCT-3", createdAt)
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	firstPage, err := repo.List(ctx, 2, nil)
 	if err != nil {
@@ -179,8 +180,8 @@ func TestRepositoryList_UsesIDAsTieBreakerForSameTimestamp(t *testing.T) {
 }
 
 func TestRepositoryList_NewInsertDoesNotShiftExistingCursor(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 	repo := NewRepository(db)
 
 	baseTime := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
@@ -197,7 +198,7 @@ func TestRepositoryList_NewInsertDoesNotShiftExistingCursor(t *testing.T) {
 	insertProductFixture(t, db, p4, "P4", baseTime.Add(4*time.Minute))
 	insertProductFixture(t, db, p5, "P5", baseTime.Add(5*time.Minute))
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	firstPage, err := repo.List(ctx, 2, nil)
 	if err != nil {

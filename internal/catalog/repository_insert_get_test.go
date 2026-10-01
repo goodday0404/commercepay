@@ -4,12 +4,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/goodday0404/commercepay/internal/testutil"
 	"github.com/google/uuid"
 )
 
 func TestRepositoryInsertAndGetByID(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 
 	repo := NewRepository(db)
 	product, err := NewProduct(
@@ -23,7 +24,7 @@ func TestRepositoryInsertAndGetByID(t *testing.T) {
 		t.Fatalf("create product: %v", err)
 	}
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	if err := repo.Insert(ctx, product); err != nil {
 		t.Fatalf("insert product: %v", err)
@@ -60,8 +61,8 @@ func TestRepositoryInsertAndGetByID(t *testing.T) {
 }
 
 func TestRepositoryInsertReturnsSKUAlreadyExists(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 	repo := NewRepository(db)
 
 	product, err := NewProduct(
@@ -86,7 +87,7 @@ func TestRepositoryInsertReturnsSKUAlreadyExists(t *testing.T) {
 		t.Fatalf("create product: %v", err)
 	}
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	if err := repo.Insert(ctx, product); err != nil {
 		t.Fatalf("insert product: %v", err)
@@ -98,11 +99,11 @@ func TestRepositoryInsertReturnsSKUAlreadyExists(t *testing.T) {
 }
 
 func TestRepositoryGetByIDReturnsProductNotFound(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 	repo := NewRepository(db)
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	_, err := repo.GetByID(ctx, uuid.New())
 	if !errors.Is(err, ErrProductNotFound) {

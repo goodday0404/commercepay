@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/goodday0404/commercepay/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -35,12 +36,12 @@ func TestRepositoryProductsTableRejectsBlankRequiredText(t *testing.T) {
 		},
 	}
 
-	db := openTestDB(t)
-	ctx := testContext(t)
+	db := testutil.OpenTestDB(t)
+	ctx := testutil.TestContext(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetProducts(t, db)
+			testutil.ResetCatalogAndCart(t, db)
 
 			_, err := db.Exec(
 				ctx,
@@ -111,13 +112,13 @@ func TestRepositoryInsertMapsBlankTextConstraintViolations(t *testing.T) {
 		},
 	}
 
-	db := openTestDB(t)
+	db := testutil.OpenTestDB(t)
 	repo := NewRepository(db)
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetProducts(t, db)
+			testutil.ResetCatalogAndCart(t, db)
 
 			product := Product{
 				ID:         uuid.New(),
@@ -142,10 +143,10 @@ func TestRepositoryInsertMapsBlankTextConstraintViolations(t *testing.T) {
 }
 
 func TestRepositoryProductsTableRejectsNegativePrice(t *testing.T) {
-	db := openTestDB(t)
-	resetProducts(t, db)
+	db := testutil.OpenTestDB(t)
+	testutil.ResetCatalogAndCart(t, db)
 
-	ctx := testContext(t)
+	ctx := testutil.TestContext(t)
 
 	const query = `
 			INSERT INTO products (
