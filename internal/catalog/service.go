@@ -10,6 +10,7 @@ import (
 type productRepository interface {
 	Insert(context.Context, Product) error
 	GetByID(context.Context, uuid.UUID) (Product, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]Product, error)
 	List(context.Context, int, *ProductCursor) (ProductPage, error)
 }
 
@@ -51,6 +52,19 @@ func (s *Service) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 		return Product{}, fmt.Errorf("get product: %w", err)
 	}
 	return product, nil
+}
+
+func (s *Service) GetProducts(ctx context.Context, ids []uuid.UUID) ([]Product, error) {
+	if len(ids) == 0 {
+		return []Product{}, nil
+	}
+
+	products, err := s.repo.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("get products: %w", err)
+	}
+
+	return products, nil
 }
 
 func (s *Service) ListProducts(ctx context.Context, input ListProductsInput) (ProductPage, error) {

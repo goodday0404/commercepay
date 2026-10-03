@@ -221,3 +221,53 @@ func (r *Repository) List(ctx context.Context, limit int, cursor *ProductCursor)
 		NextCursor: nextProduct,
 	}, nil
 }
+
+func (r *Repository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]Product, error) {
+	if len(ids) == 0 {
+		return []Product{}, nil
+	}
+
+	const query = `
+		SELECT
+			id,
+			sku,
+			name,
+			price_minor,
+			currency,
+			available
+		FROM products
+		WHERE id = ANY($1::uuid[])
+	`
+
+	rows, err := r.db.Query(ctx, query, ids)
+	if err != nil {
+		return nil, fmt.Errorf("query products by IDs: %w", err)
+	}
+
+	defer rows.Close()
+
+	products := make([]Product, 0, len(ids))
+
+	for rows.Next() {
+		var product Product
+
+		if err := rows.Scan(
+			&product.ID,
+			&product.SKU,
+			&product.Name,
+			&product.PriceMinor,
+			&product.Currency,
+			&product.Available,
+		); err != nil {
+			return nil, fmt.Errorf("scan product: %w", err)
+		}
+
+		products = append(products, product)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate products: %w", err)
+	}
+
+	return products, nil
+}

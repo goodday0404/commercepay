@@ -27,7 +27,9 @@ func run() error {
 	}
 	defer deps.Close()
 
-	buildCatalog(cfg.Catalog, deps.DB, deps.Router)
+	catalogService := buildCatalog(cfg.Catalog, deps.DB, deps.Router)
+
+	buildCart(deps.DB, deps.Router, catalogService)
 
 	server := buildHTTPServer(cfg.HTTPPort, deps.Router)
 

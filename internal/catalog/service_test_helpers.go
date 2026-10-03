@@ -7,9 +7,10 @@ import (
 )
 
 type fakeProductRepository struct {
-	insertFn  func(context.Context, Product) error
-	getByIDFn func(context.Context, uuid.UUID) (Product, error)
-	listFn    func(context.Context, int, *ProductCursor) (ProductPage, error)
+	insertFn   func(context.Context, Product) error
+	getByIDFn  func(context.Context, uuid.UUID) (Product, error)
+	getByIDsFn func(context.Context, []uuid.UUID) ([]Product, error)
+	listFn     func(context.Context, int, *ProductCursor) (ProductPage, error)
 }
 
 func (f *fakeProductRepository) Insert(ctx context.Context, product Product) error {
@@ -26,6 +27,14 @@ func (f *fakeProductRepository) GetByID(ctx context.Context, id uuid.UUID) (Prod
 	}
 
 	return f.getByIDFn(ctx, id)
+}
+
+func (f *fakeProductRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]Product, error) {
+	if f == nil {
+		return []Product{}, nil
+	}
+
+	return f.getByIDsFn(ctx, ids)
 }
 
 func (f *fakeProductRepository) List(ctx context.Context, limit int, after *ProductCursor) (ProductPage, error) {
